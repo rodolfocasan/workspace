@@ -5,7 +5,7 @@
 ################################################################################
 # Descripción: Script inteligente de automatización para instalar Node.js y NVM
 # Autor: Rodolfo Casan
-# Versión: 1.0.0
+# Versión: 1.0.1
 # Ruta original del script: Linux/Debian/install_nodejs.sh
 #
 # Este script configura un entorno completo de desarrollo Node.js usando NVM,
@@ -32,12 +32,12 @@ readonly MORADO='\033[0;35m'
 readonly CIAN='\033[0;36m'
 readonly NC='\033[0m' # Sin color
 
-# Variables de configuración
+# Variables de configuración - CORREGIDO: Removido readonly de NVM_DIR
 readonly NVM_INSTALLER_URL="https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh"
-readonly NVM_DIR="$HOME/.nvm"
+NVM_DIR="$HOME/.nvm"  # Sin readonly para permitir export posterior
 readonly BASHRC_FILE="$HOME/.bashrc"
 readonly PROFILE_FILE="$HOME/.profile"
-readonly SCRIPT_VERSION="1.0.0"
+readonly SCRIPT_VERSION="1.0.1"
 readonly NODE_LTS_VERSION="lts"
 
 
@@ -322,6 +322,10 @@ manejar_reinstalacion() {
 verificar_configuracion_actual() {
     mostrar_seccion "VERIFICANDO CONFIGURACIÓN ACTUAL"
     
+    # Cargar NVM temporalmente para verificación
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+    
     if command -v nvm >/dev/null 2>&1; then
         local version=$(nvm --version)
         mostrar_exito "NVM funcionando correctamente: v$version"
@@ -479,9 +483,8 @@ instalar_nvm() {
 instalar_nodejs_lts() {
     mostrar_mensaje "Instalando Node.js LTS..."
     
-    # Cargar NVM en el shell actual
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    # Cargar NVM en el shell actual - CORREGIDO: usar source en lugar de \. y sin redefinir NVM_DIR
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
     
     if command -v nvm >/dev/null 2>&1; then
         if nvm install "$NODE_LTS_VERSION"; then
@@ -528,7 +531,7 @@ configurar_entorno() {
         mostrar_mensaje "Agregando configuración de NVM a $BASHRC_FILE..."
         
         # Agregar configuración completa de NVM
-        cat >> "$BASHRC_FILE" << 'EOF'
+        cat >> "$BASHRC_FILE" << EOF
 
 ################################################################################
 # Configuración de NVM - [Rodolfo Casan; Workspace Node.js]
@@ -536,11 +539,11 @@ configurar_entorno() {
 ################################################################################
 
 # Definir directorio de NVM
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="\$HOME/.nvm"
 
 # Cargar NVM y autocompletado si están disponibles
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+[ -s "\$NVM_DIR/bash_completion" ] && \. "\$NVM_DIR/bash_completion"
 
 ################################################################################
 EOF
@@ -551,11 +554,11 @@ EOF
     # También agregar a .profile para compatibilidad
     if [ -f "$PROFILE_FILE" ] && ! grep -q "NVM_DIR" "$PROFILE_FILE" 2>/dev/null; then
         mostrar_mensaje "Agregando configuración básica a .profile..."
-        cat >> "$PROFILE_FILE" << 'EOF'
+        cat >> "$PROFILE_FILE" << EOF
 
 # NVM Configuration
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+export NVM_DIR="\$HOME/.nvm"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
 EOF
     fi
 }
@@ -566,8 +569,10 @@ aplicar_configuracion() {
     
     mostrar_mensaje "Configurando variables de entorno para la sesión actual..."
     
-    # Exportar variables para la sesión actual
-    export NVM_DIR="$HOME/.nvm"
+    # CORREGIDO: Solo exportar si no está ya definida, evitar redefinición de readonly
+    if [ -z "$NVM_DIR" ]; then
+        export NVM_DIR="$HOME/.nvm"
+    fi
     
     # Cargar NVM si está disponible
     if [ -s "$NVM_DIR/nvm.sh" ]; then
@@ -593,9 +598,8 @@ verificar_instalacion_exitosa() {
     # Recargar configuración
     source "$BASHRC_FILE" 2>/dev/null || true
     
-    # Cargar NVM
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    # Cargar NVM - CORREGIDO: Evitar redefinir NVM_DIR
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
     
     # Verificar NVM
     if command -v nvm >/dev/null 2>&1; then
